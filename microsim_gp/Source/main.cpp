@@ -24,33 +24,33 @@ void GPotential()
 {
 	auto strt_time = ParallelDescriptor::second();
 	int ncell, maxgrid, nsteps, plotint;
-	Real tau, eps, dab, gamma, seed, dt, Afill, real;
+	Real eps, dab, gamma, seed, dt, Afill, real_bound,Vm;
 	Vector<amrex::Real> A(2,0);
+	Vector<amrex::Real> Aeq(2,0);
 	Vector<amrex::Real> ceq(2,0);
+	Vector<amrex::Real> cuc(2,0);
 	Vector<amrex::Real> diff(2,0);
 
 	{
 		ParmParse pp;
 		
-		pp.get("real", real);
+		pp.get("real_bound", real_bound);
 		pp.get("ncell",ncell);
 		pp.get("maxgrid",maxgrid);
 		pp.get("nsteps",nsteps);
 		pp.get("plotint",plotint);
-		pp.get("tau",tau);
 		pp.get("epsilon",eps);
 		pp.get("dab",dab);
 		pp.get("gamma",gamma);
 		pp.get("A_fill",Afill);
-	//	pp.get("A_liq",A_liq);
-	//	pp.get("A_alpha",A_alpha);
-	//	pp.get("ceq_alpha",ceq_alpha);
-	//	pp.get("ceq_liq",ceq_liq);
 		pp.get("seed",seed);
 		pp.get("dt",dt);
+		pp.get("Vm",Vm);
 
 		pp.queryarr("A", A);
+		pp.queryarr("Aeq", Aeq);
 		pp.queryarr("ceq", ceq);
+		pp.queryarr("cuc", cuc);
 		pp.queryarr("diffusivity", diff);
 	}
 	
@@ -64,20 +64,17 @@ void GPotential()
 		ba.maxSize(maxgrid);
 		
 		RealBox real_box({AMREX_D_DECL(Real(0.0),Real(0.0),Real(0.0))},
-				{AMREX_D_DECL(real, real, real)});
+				{AMREX_D_DECL(real_bound, real_bound, real_bound)});
 	 	Array<int, AMREX_SPACEDIM> is_periodic{AMREX_D_DECL(1,1,1)};
 	 	geom.define(domain, real_box, CoordSys::cartesian, is_periodic);
 	 	
 	 }
 	 
-	 //Box box(dom_lo,dom_high);
 
 	 int ghost=1;
 	 int comp=1;
 	 
 	 DistributionMapping dm(ba);
-	 //Print()<<ba;
-	 //Print()<<dm;
 	 
 	 MultiFab phi_old(ba, dm, comp, ghost);
 	 MultiFab phi_new(ba, dm, comp, ghost);
@@ -87,7 +84,6 @@ void GPotential()
 	 Array<amrex::MultiFab, AMREX_SPACEDIM> mu_der;
 	 
 
-	 //MultiFab theta(ba, dm, comp, ghost);
 	 MultiFab ac(ba, dm, comp, ghost);
 	 MultiFab term1(ba, dm, comp, ghost);
 	 MultiFab term2(ba, dm, comp, ghost);
@@ -122,15 +118,20 @@ void GPotential()
 	Afill=Afill/2.0; 
 	A[0]=A[0]/2.0;
 	A[1]=A[1]/2.0; 
-	Real B = 2.0*A[1]*ceq[1] - 2.0*A[0]*ceq[0];
-	Real D = A[0]*ceq[0]*ceq[0] - A[1]*ceq[1]*ceq[1];
+	Aeq[0]=Aeq[0]/2.0;
+	Aeq[1]=Aeq[1]/2.0; 
+	
+	Real B = 2.0*A[1]*cuc[1] - 2.0*A[0]*cuc[0];
+	Real D = A[0]*cuc[0]*cuc[0] - A[1]*cuc[1]*cuc[1];
+
+	Real tau = 0.222*eps*(ceq[0]-ceq[1])*(ceq[0]-ceq[1])*2*Aeq[1]/(diff[1]*Vm);
 	
 	
 
 	 GpuArray<Real, AMREX_SPACEDIM> dx = geom.CellSizeArray();
 	 
 	 init_phi(phi_new, seed, ncell);
-	 init_mu(mu_new, Afill, ceq[1]);
+	 init_mu(mu_new, Aeq[1], ceq[1]);
  
 
 	 MultiFab h(ba, dm, 1, 0);
@@ -167,7 +168,7 @@ void GPotential()
 	 	MultiFab::Copy(phi_old, phi_new, 0,0,1,0);
 	 	MultiFab::Copy(mu_old, mu_new, 0,0,1,0);
 	 	
-	 	advance(phi_old, phi_new, deriv, mu_old, mu_new, mu_der, term1, term2, term3, ac, eeta, gamma, dab, tau, dt, eps, A, B, D, diff, geom);
+	 	advance(phi_old, phi_new, deriv, mu_old, mu_new, mu_der, term1, term2, term3, ac, eeta, gamma, dab, tau, dt, eps, A, B, D, diff, Vm, geom);
 	 	
 	 	time=time+dt;
 	 	calc_h(phi_new, h);

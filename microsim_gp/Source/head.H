@@ -28,6 +28,7 @@ void advance(	MultiFab& phi_old,
 		Real& B,
 		Real& D,
 		Vector<Real>& diff,
+		Real Vm,
 		Geometry const& geom);
 		
 void init_phi (	MultiFab& phi_new,
