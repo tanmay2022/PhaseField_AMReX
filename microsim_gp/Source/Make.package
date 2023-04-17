@@ -1,2 +1,0 @@
-CEXE_sources += main.cpp head.cpp
-CEXE_headers += head.H calc.H

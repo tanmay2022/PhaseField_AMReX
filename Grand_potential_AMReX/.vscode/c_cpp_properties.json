@@ -3,8 +3,10 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/../../../../../**",
-                "/usr/include/x86_64-linux-gnu/mpich"
+                "${workspaceFolder}/../../../../**",
+                "/usr/include/x86_64-linux-gnu/mpich",
+                "/home/nasir/AMReX/amrex/Src/Base",
+                "/home/nasir/AMReX/amrex/tmp_install_dir/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",
